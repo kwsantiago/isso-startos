@@ -1,6 +1,6 @@
 import { sdk } from '../sdk'
 import { storeJson } from '../fileModels/store.json'
-import { ownUiUrls } from '../utils'
+import { ownBaseUrl } from '../utils'
 
 // Shows how to reach the moderation panel and the generated admin password.
 export const adminLogin = sdk.Action.withoutInput(
@@ -17,9 +17,7 @@ export const adminLogin = sdk.Action.withoutInput(
 
   async ({ effects }) => {
     const password = (await storeJson.read((s) => s.adminPassword).once()) ?? ''
-    const urls = await ownUiUrls(effects)
-    const base = urls[0] ?? `http://localhost`
-    const adminUrl = `${base.replace(/\/$/, '')}/admin`
+    const adminUrl = `${await ownBaseUrl(effects)}/admin`
 
     return {
       version: '1' as const,

@@ -22,7 +22,10 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   // Isso's CORS allowlist: the user's website(s) plus this server's own Tor/LAN
   // addresses (so the /admin panel, served by Isso itself, is allowed too).
-  const hosts = [...parseWebsites(store.websites), ...(await ownUiUrls(effects))]
+  const hosts = [
+    ...parseWebsites(store.websites),
+    ...(await ownUiUrls(effects)),
+  ]
   await issoCfg.write(effects, renderIssoCfg(store, hosts))
 
   const sub = await sdk.SubContainer.of(

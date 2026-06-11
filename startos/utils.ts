@@ -16,7 +16,7 @@ export const dbSubpath = 'db'
 export const configSubpath = 'config'
 
 export const randomPassword = {
-  charset: 'a-z,A-Z,1-9',
+  charset: 'a-z,A-Z,0-9',
   len: 24,
 }
 
@@ -43,15 +43,24 @@ export async function ownUiUrls(effects: T.Effects): Promise<string[]> {
     .map((h) => toHttps(addressInfo.nonLocal.toUrl(h)))
 }
 
+// This server's primary public URL with any trailing slash stripped, falling
+// back to localhost before the interfaces are up.
+export async function ownBaseUrl(effects: T.Effects): Promise<string> {
+  const urls = await ownUiUrls(effects)
+  return (urls[0] ?? 'http://localhost').replace(/\/$/, '')
+}
+
 // Render an isso.cfg from typed settings. Isso's parser is configparser-based:
 // `host` is a newline-indented list (getiter splits on '\n'), interpolation is
 // disabled so '%' in passwords is safe, and "15m"-style human timedeltas are
 // accepted for time values.
 export function renderIssoCfg(store: StoreConfig, hosts: string[]): string {
+  // Strip CR/LF from any interpolated value so a single setting cannot inject
+  // extra INI keys or sections (e.g. a password/host containing a newline).
+  const v = (s: string) => s.replace(/[\r\n]+/g, ' ')
+
   const hostBlock =
-    hosts.length > 0
-      ? '\n' + hosts.map((h) => `    ${h}`).join('\n')
-      : ''
+    hosts.length > 0 ? '\n' + hosts.map((h) => `    ${v(h)}`).join('\n') : ''
 
   const lines: string[] = [
     '# Managed by StartOS. Edit settings via the Isso service actions.',
@@ -59,19 +68,19 @@ export function renderIssoCfg(store: StoreConfig, hosts: string[]): string {
     '[general]',
     `dbpath = ${dbPath}`,
     `host =${hostBlock}`,
-    `max-age = ${store.maxAge}`,
+    `max-age = ${v(store.maxAge)}`,
     `notify = ${store.smtp.enabled ? 'smtp' : 'stdout'}`,
-    `reply-notifications = ${store.replyNotifications}`,
+    `reply-notifications = ${store.smtp.enabled && store.replyNotifications}`,
     `gravatar = ${store.gravatar}`,
     `latest-enabled = ${store.latestEnabled}`,
     '',
     '[admin]',
     `enabled = ${store.adminEnabled}`,
-    `password = ${store.adminPassword}`,
+    `password = ${v(store.adminPassword)}`,
     '',
     '[moderation]',
     `enabled = ${store.moderationEnabled}`,
-    `purge-after = ${store.purgeAfter}`,
+    `purge-after = ${v(store.purgeAfter)}`,
     '',
     '[guard]',
     `enabled = ${store.guard.enabled}`,
@@ -85,13 +94,13 @@ export function renderIssoCfg(store: StoreConfig, hosts: string[]): string {
     lines.push(
       '',
       '[smtp]',
-      `username = ${store.smtp.username}`,
-      `password = ${store.smtp.password}`,
-      `host = ${store.smtp.host}`,
+      `username = ${v(store.smtp.username)}`,
+      `password = ${v(store.smtp.password)}`,
+      `host = ${v(store.smtp.host)}`,
       `port = ${store.smtp.port}`,
       `security = ${store.smtp.security}`,
-      `to = ${store.smtp.to}`,
-      `from = ${store.smtp.from}`,
+      `to = ${v(store.smtp.to)}`,
+      `from = ${v(store.smtp.from)}`,
     )
   }
 

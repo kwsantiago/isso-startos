@@ -32,7 +32,7 @@ export const embedCode = sdk.Action.withoutInput(
       version: '1' as const,
       title: 'Embed Code',
       message:
-        'Paste the snippet below into any page where you want comments to appear. Make sure that page\'s origin is listed under Websites in the Configure action.',
+        "Paste the snippet below into any page where you want comments to appear. Make sure that page's origin is listed under Websites in the Configure action.",
       result: {
         type: 'group' as const,
         value: [

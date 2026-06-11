@@ -4,6 +4,13 @@ import { parseWebsites } from '../utils'
 
 const { InputSpec, Value } = sdk
 
+// Isso parses these as human timedeltas (e.g. 15m, 2h, 7d, 1h30m). Reject
+// free text up front so a typo cannot wedge the daemon in a restart loop.
+const timedeltaPattern = {
+  regex: '^\\s*(\\d+\\s*[smhdw]\\s*)+$',
+  description: 'Use a number and unit, e.g. 15m, 2h, 7d, or 1h30m.',
+}
+
 const guardSpec = InputSpec.of({
   enabled: Value.toggle({
     name: 'Enable Spam Protection',
@@ -92,7 +99,7 @@ const inputSpec = InputSpec.of({
   websites: Value.textarea({
     name: 'Websites',
     description:
-      'The website(s) allowed to embed and load comments (Isso\'s CORS allowlist). Enter one origin per line, including the scheme, e.g. https://blog.example.com/. At least one is required for comments to work.',
+      "The website(s) allowed to embed and load comments (Isso's CORS allowlist). Enter one origin per line, including the scheme, e.g. https://blog.example.com/. At least one is required for comments to work.",
     required: true,
     default: null,
     placeholder: 'https://blog.example.com/',
@@ -115,6 +122,7 @@ const inputSpec = InputSpec.of({
       'How long a visitor may edit or delete their own comment after posting, e.g. 15m, 2h, 7d.',
     required: true,
     default: '15m',
+    patterns: [timedeltaPattern],
   }),
   purgeAfter: Value.text({
     name: 'Purge Unapproved Comments After',
@@ -122,6 +130,7 @@ const inputSpec = InputSpec.of({
       'Remove still-unapproved comments from the moderation queue after this period, e.g. 30d.',
     required: true,
     default: '30d',
+    patterns: [timedeltaPattern],
   }),
   replyNotifications: Value.toggle({
     name: 'Reply Notifications',
@@ -207,6 +216,15 @@ export const configure = sdk.Action.withInput(
     const websites = parseWebsites(input.websites)
     if (websites.length === 0) {
       throw new Error('Enter at least one website origin.')
+    }
+
+    if (input.smtp.enabled) {
+      if (!input.smtp.to?.trim()) {
+        throw new Error('Enter a To Address to enable email notifications.')
+      }
+      if (!input.smtp.from?.trim()) {
+        throw new Error('Enter a From Address to enable email notifications.')
+      }
     }
 
     await storeJson.merge(effects, {
